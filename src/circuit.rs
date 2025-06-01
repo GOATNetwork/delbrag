@@ -58,7 +58,6 @@ impl Circuit {
         for gate in &gates {
             match gate {
                 Gate::And(_, _) => and_gates += 1,
-                Gate::Nand(_, _) => and_gates += 1,
                 Gate::InEval => eval_inputs += 1,
                 Gate::InContrib => contrib_inputs += 1,
                 _ => {}
@@ -110,12 +109,6 @@ impl Circuit {
                         return Err(Error::InvalidCircuit);
                     }
                 }
-                &Gate::Nand(x, y) => {
-                    if x >= i || y >= i {
-                        return Err(Error::InvalidCircuit);
-                    }
-                    num_and_gates += 1;
-                }
             }
         }
         if self.output_gates.is_empty() {
@@ -165,8 +158,6 @@ pub enum Gate {
     And(GateIndex, GateIndex),
     /// A gate computing the NOT of the specified gate.
     Not(GateIndex),
-    /// A gate computing the NOT AND of the specified gate.
-    Nand(GateIndex, GateIndex),
 }
 
 impl Gate {
@@ -192,11 +183,6 @@ impl Gate {
             Gate::Not(x) => {
                 hasher.update(&x.to_be_bytes());
                 4
-            }
-            Gate::Nand(x,y) => {
-                hasher.update(&x.to_be_bytes());
-                hasher.update(&y.to_be_bytes());
-                5 
             }
         };
         hasher.update(&[type_byte]);

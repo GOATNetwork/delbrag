@@ -5,10 +5,12 @@ mod leakyand;
 mod leakydelta_ot;
 mod ot_base;
 mod cointossing;
+pub mod simulate;
 pub mod states;
 
 pub use circuit::*;
 pub use states::*;
+pub use simulate::*;
 
 /// Errors occurring during the validation or the execution of the MPC protocol.
 #[derive(Debug, PartialEq, Eq)]

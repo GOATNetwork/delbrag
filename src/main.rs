@@ -1,44 +1,9 @@
 //! SMPC engine simulation environment under ideal functionality
 use delbrag::{
-    states::{Contributor, Evaluator},
     Circuit, Error,
     Gate,
+    simulate,
 };
-use rand::SeedableRng;
-use rand_chacha::ChaCha20Rng;
-
-/// Simulates the local execution of the circuit using a 2 Party MPC protocol.
-///
-/// The Multi-Party Computation is performed using the full cryptographic protocol exposed by the
-/// [`Contributor`] and [`Evaluator`]. The messages between contributor and evaluator are exchanged
-/// using local message queues. This function thus simulates an MPC execution on a local machine
-/// under ideal network conditions, without any latency or bandwidth restrictions.
-pub fn simulate(
-    circuit: &Circuit,
-    input_contributor: &[bool],
-    input_evaluator: &[bool],
-) -> Result<Vec<bool>, Error> {
-    let mut eval = Evaluator::new(
-        circuit.clone(),
-        input_evaluator,
-        ChaCha20Rng::from_entropy(),
-    )?;
-    let (mut contrib, mut msg_for_eval) =
-        Contributor::new(circuit, input_contributor, ChaCha20Rng::from_entropy())?;
-
-    assert_eq!(contrib.steps(), eval.steps());
-
-    for _ in 0..eval.steps() {
-        let (next_state, msg_for_contrib) = eval.run(&msg_for_eval)?;
-        eval = next_state;
-
-        let (next_state, reply) = contrib.run(&msg_for_contrib)?;
-        contrib = next_state;
-
-        msg_for_eval = reply;
-    }
-    eval.output(&msg_for_eval)
-}
 
 fn and(iterations: u32) -> Result<(), Error> {
     let mut gates = vec![Gate::InContrib];
@@ -80,30 +45,81 @@ fn xor(iterations: u32) -> Result<(), Error> {
     Ok(())
 }
 
-fn nand(iterations: u32) -> Result<(), Error> {
-    let mut gates = vec![Gate::InContrib];
-    let output_gates = vec![iterations * 2];
-    for i in 0..iterations {
-        gates.append(&mut vec![Gate::InEval, Gate::Nand(i * 2, i * 2 + 1)]);
+fn misc() -> Result<(), Error> {
+    let program = Circuit::new(
+        vec![
+            Gate::InContrib,
+            Gate::InEval,
+            Gate::Xor(0, 1),
+            // gate 3 : !not(xor)
+            Gate::Not(2),
+            Gate::Not(0),
+            Gate::Not(1),
+            // gate 6: Xor(!a, b)
+            Gate::Xor(4, 1),
+            // gate 7: Xor(a, !b)
+            Gate::Xor(0, 5),
+            // gate 8: !Xor(a, !b)
+            Gate::Not(7),
+            Gate::And(0, 1),
+            // gate 10: NAND(a, b)
+            Gate::Not(9),
+        ],
+        vec![2, 3, 6, 7, 8, 10],
+    );
+
+    for in_a in vec![true, false] {
+        for in_b in vec![true, false] {
+            let input_a = vec![in_a];
+            let input_b = vec![in_b];
+
+            let result = simulate(&program, &input_a, &input_b)?;
+
+            assert_eq!(
+                result,
+                vec![
+                    in_a ^ in_b,
+                    !(in_a ^ in_b),
+                    (!in_a) ^ in_b,
+                    in_a ^ (!in_b),
+                    !(in_a ^ (!in_b)),
+                    !(in_a & in_b)
+                ]
+            );
+        }
     }
+    Ok(())
+}
 
-    let program = Circuit::new(gates, output_gates);
-    program.validate().unwrap();
-
-    let input_a = vec![true];
-    let input_b = vec![true; iterations as usize];
-
-    let result = simulate(&program, &input_a, &input_b).unwrap();
-
-    let expected = vec![iterations % 2 == 0];
-
-    assert_eq!(result, expected);
-
+fn nand() -> Result<(), Error> {
+    let program = Circuit::new(
+        vec![
+            Gate::InContrib,
+            Gate::InEval,
+            Gate::And(0, 1),
+            Gate::Not(2),
+        ],
+        vec![3],
+    );
+    for in_a in vec![true, false] {
+        for in_b in vec![true, false] {
+            let input_a = vec![in_a];
+            let input_b = vec![in_b];
+            let result = simulate(&program, &input_a, &input_b)?;
+            assert_eq!(
+                result,
+                vec![
+                    !(in_a & in_b),
+                ]
+            )
+        }
+    }
     Ok(())
 }
 
 fn main() {
     and(10).unwrap();
     xor(10).unwrap();
-    nand(2).unwrap()
+    misc().unwrap();
+    nand().unwrap()    
 }
