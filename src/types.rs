@@ -116,7 +116,7 @@ pub(crate) type AndTableShare = [BitShare; 4];
 
 impl Delta {
     pub(crate) fn gen_random<Rng: RngCore + CryptoRng>(rng: &mut Rng) -> Self {
-        Self(rng.random::<SecurityBits>())
+        Self(rng.r#gen::<SecurityBits>())
     }
 
     #[inline]

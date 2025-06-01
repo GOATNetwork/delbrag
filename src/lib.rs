@@ -1,8 +1,14 @@
 mod circuit;
 mod hash;
 mod types;
+mod leakyand;
+mod leakydelta_ot;
+mod ot_base;
+mod cointossing;
+pub mod states;
 
 pub use circuit::*;
+pub use states::*;
 
 /// Errors occurring during the validation or the execution of the MPC protocol.
 #[derive(Debug, PartialEq, Eq)]
@@ -15,7 +21,7 @@ pub enum Error {
     UnexpectedGarbledTableShare,
     /// Not enough input bits were provided as user input.
     InsufficientInput,
-    /// A MAC checking error occured, due to an accidental or deliberate data corruption.
+    /// A AC checking error occured, due to an accidental or deliberate data corruption.
     MacError,
     /// The Leaky Authenticated AND Triples did not pass the equality check.
     LeakyAndNotEqual,
