@@ -1,137 +1,168 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BigUint {
-    /// Least significant limb first (little endian)
-    pub limbs: Vec<u32>,
-}
-
-impl BigUint {
-    /// Create a BigUint from a single u32 value
-    pub fn from_u32(n: u32) -> Self {
-        if n == 0 {
-            Self { limbs: vec![] }
-        } else {
-            Self { limbs: vec![n] }
-        }
-    }
-
-    /// Add another BigUint to self
-    pub fn add_assign(&mut self, other: &BigUint) {
-        let mut carry = 0u64;
-        let max_len = self.limbs.len().max(other.limbs.len());
-
-        self.limbs.resize(max_len, 0);
-
-        for i in 0..max_len {
-            let a = self.limbs[i] as u64;
-            let b = if i < other.limbs.len() { other.limbs[i] as u64 } else { 0 };
-
-            let sum = a + b + carry;
-            self.limbs[i] = sum as u32;
-            carry = sum >> 32;
-        }
-
-        if carry != 0 {
-            self.limbs.push(carry as u32);
-        }
-    }
-
-    /// Multiply self by a u32
-    pub fn mul_u32(&self, rhs: u32) -> BigUint {
-        let mut result = Vec::with_capacity(self.limbs.len() + 1);
-        let mut carry = 0u64;
-
-        for &limb in &self.limbs {
-            let prod = (limb as u64) * (rhs as u64) + carry;
-            result.push(prod as u32);
-            carry = prod >> 32;
-        }
-
-        if carry != 0 {
-            result.push(carry as u32);
-        }
-
-        BigUint { limbs: result }
-    }
-
-    /// Divide by u32 and return (quotient, remainder)
-    pub fn divmod_u32(&self, divisor: u32) -> (BigUint, u32) {
-        let mut result = Vec::with_capacity(self.limbs.len());
-        let mut rem = 0u64;
-
-        for &limb in self.limbs.iter().rev() {
-            let dividend = (rem << 32) | limb as u64;
-            result.push((dividend / divisor as u64) as u32);
-            rem = dividend % divisor as u64;
-        }
-
-        result.reverse();
-        while result.last() == Some(&0) {
-            result.pop();
-        }
-
-        (BigUint { limbs: result }, rem as u32)
-    }
-}
-
+use crate::BigUint;
+use num_traits::Zero;
 use std::cmp::Ordering;
-use std::fmt::{Display, Formatter};
-use std::ops::{AddAssign, Mul};
+use std::ops::Add;
+use std::ops::Mul;
+use std::ops::Neg;
+use std::ops::Sub;
 
-impl AddAssign<&BigUint> for BigUint {
-    fn add_assign(&mut self, rhs: &BigUint) {
-        self.add_assign(rhs);
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BigInt {
+    pub sign: bool, // false = positive, true = negative
+    pub magnitude: BigUint,
+}
+
+impl BigInt {
+    pub fn zero() -> Self {
+        Self { sign: false, magnitude: BigUint::zero() }
+    }
+
+    pub fn from_biguint(sign: bool, magnitude: BigUint) -> Self {
+        if magnitude.is_zero() { Self::zero() } else { Self { sign, magnitude } }
+    }
+
+    pub fn from_u32(n: u32) -> Self {
+        Self::from_biguint(false, BigUint::from(n))
     }
 }
 
-impl Mul<u32> for BigUint {
-    type Output = BigUint;
-    fn mul(self, rhs: u32) -> BigUint {
-        self.mul_u32(rhs)
+impl Neg for BigInt {
+    type Output = BigInt;
+
+    fn neg(self) -> BigInt {
+        if self.magnitude.is_zero() {
+            self
+        } else {
+            BigInt { sign: !self.sign, magnitude: self.magnitude }
+        }
     }
 }
 
-impl PartialOrd for BigUint {
+impl Neg for &BigInt {
+    type Output = BigInt;
+
+    fn neg(self) -> BigInt {
+        if self.magnitude.is_zero() {
+            BigInt::zero()
+        } else {
+            BigInt { sign: !self.sign, magnitude: self.magnitude.clone() }
+        }
+    }
+}
+
+impl Add for BigInt {
+    type Output = BigInt;
+
+    fn add(self, other: BigInt) -> BigInt {
+        &self + &other
+    }
+}
+
+impl Add<&BigInt> for &BigInt {
+    type Output = BigInt;
+    fn add(self, other: &BigInt) -> BigInt {
+        match (self.sign, other.sign) {
+            (false, false) => BigInt::from_biguint(false, &self.magnitude + &other.magnitude),
+            (true, true) => BigInt::from_biguint(true, &self.magnitude + &other.magnitude),
+            (false, true) => match self.magnitude.cmp(&other.magnitude) {
+                Ordering::Greater => {
+                    BigInt::from_biguint(false, &self.magnitude - &other.magnitude)
+                }
+                Ordering::Less => BigInt::from_biguint(true, &other.magnitude - &self.magnitude),
+                Ordering::Equal => BigInt::zero(),
+            },
+            (true, false) => other + self,
+        }
+    }
+}
+
+impl Sub for BigInt {
+    type Output = BigInt;
+    fn sub(self, other: BigInt) -> BigInt {
+        self + (-other)
+    }
+}
+
+impl Sub<&BigInt> for &BigInt {
+    type Output = BigInt;
+    fn sub(self, other: &BigInt) -> BigInt {
+        self + &(-other)
+    }
+}
+
+impl Sub<&BigInt> for BigInt {
+    type Output = BigInt;
+    fn sub(self, other: &BigInt) -> BigInt {
+        self + (-other)
+    }
+}
+
+impl Sub<BigInt> for &BigInt {
+    type Output = BigInt;
+    fn sub(self, other: BigInt) -> BigInt {
+        self + &(-other)
+    }
+}
+
+impl Mul<&BigInt> for &BigInt {
+    type Output = BigInt;
+
+    fn mul(self, other: &BigInt) -> BigInt {
+        let sign = self.sign ^ other.sign;
+        BigInt::from_biguint(sign, &self.magnitude * &other.magnitude)
+    }
+}
+
+impl PartialOrd for BigInt {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.limbs.iter().rev().cmp(other.limbs.iter().rev()))
+        Some(self.cmp(other))
     }
 }
 
-impl Display for BigUint {
-    /// Convert to decimal string (slow but educational)
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if self.limbs.is_empty() {
-            return write!(f, "0");
+impl Ord for BigInt {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self.sign, other.sign) {
+            (false, true) => Ordering::Greater,
+            (true, false) => Ordering::Less,
+            (false, false) => self.magnitude.cmp(&other.magnitude),
+            (true, true) => other.magnitude.cmp(&self.magnitude),
         }
-
-        let mut value = self.clone();
-        let mut digits = vec![];
-
-        while value > BigUint::from_u32(0) {
-            let (q, r) = value.divmod_u32(10);
-            digits.push((r as u8 + b'0') as char);
-            value = q;
-        }
-        for ch in digits.iter().rev() {
-            write!(f, "{ch}")?;
-        }
-        Ok(())
     }
 }
 
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_biguint_add_mul() {
-        let mut a = BigUint::from_u32(123456789);
-        let b = BigUint::from_u32(987654321);
-        a += &b;
-
-        let c = a.clone() * 1000;
-
-        assert_eq!(a.to_string(), "1111111110");
-        assert_eq!(c.to_string(), "1111111110000");
+impl From<i32> for BigInt {
+    fn from(n: i32) -> Self {
+        if n < 0 {
+            BigInt::from_biguint(true, BigUint::from((-n) as u32))
+        } else {
+            BigInt::from_biguint(false, BigUint::from(n as u32))
+        }
     }
+}
+
+pub fn modinv_euclid(a: &BigUint, m: &BigUint) -> Option<BigUint> {
+    let mut t = BigInt::zero();
+    let mut new_t = BigInt::from_u32(1);
+    let mut r = BigInt::from_biguint(false, m.clone());
+    let mut new_r = BigInt::from_biguint(false, a.clone());
+
+    while !new_r.magnitude.is_zero() {
+        let quotient = &r.magnitude / &new_r.magnitude;
+        let quotient_bi = BigInt::from_biguint(false, quotient);
+
+        let tmp_t = new_t.clone();
+        let tmp_r = new_r.clone();
+        t = std::mem::replace(&mut new_t, &t - &quotient_bi * &tmp_t);
+        r = std::mem::replace(&mut new_r, &r - &quotient_bi * &tmp_r);
+    }
+
+    if r.magnitude != BigUint::from(1u32) {
+        return None;
+    }
+
+    if t.sign {
+        t = t + BigInt::from_biguint(false, m.clone());
+    }
+
+    Some(t.magnitude)
 }
