@@ -27,9 +27,11 @@ musig2 = { version = "0.2.4", features = ["serde", "rand", "k256"]}
 
 rand = "0.8.5"
 rand_chacha = "0.3.1"
-blake3 = { version = "1.5.1", features = ["traits-preview"] }
+#blake3 = { version = "1.5.1", features = ["traits-preview"] }
+blake3 = "=1.5.1"
 curve25519-dalek-ng = "4.1.1"
 bincode = "1.3"
+itertools = "0.14.0"
 
 wrk17 = { path = "./wrk17" }
 protocol = { path = "./protocol" }
