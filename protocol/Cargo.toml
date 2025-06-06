@@ -13,3 +13,4 @@ serde = { workspace = true }
 rand = { workspace = true }
 bitvm = { workspace = true }
 bitcoin-script-stack = { workspace = true }
+bitcoin-script = { workspace = true }
