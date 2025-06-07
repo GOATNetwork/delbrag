@@ -173,7 +173,7 @@ mod tests {
         ];
 
         let (commit_inputs, _) =
-            build_inputs_script(&labels, inner_from(&pk_signer), inner_from(&sk_signers[1].1));
+            build_inputs_script(&labels, inner_from(pk_signer), inner_from(sk_signers[1].1));
         let locking_script = combine_scripts(&[commit_inputs, script! {OP_TRUE}.compile()]);
 
         // Simulate a message to multi-sig
@@ -213,7 +213,7 @@ mod tests {
         let y0_preimage = b"some-secret-y0";
         let y0_hash = sha256::Hash::hash(y0_preimage);
 
-        let output_script = build_failgate_script(inner_from(&pk_signer), &y0_hash.to_byte_array());
+        let output_script = build_failgate_script(inner_from(pk_signer), &y0_hash.to_byte_array());
 
         let locking_script = combine_scripts(&[output_script, script! {OP_TRUE}.compile()]);
 

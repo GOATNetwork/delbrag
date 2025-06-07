@@ -9,7 +9,7 @@ members = [
     "protocol",
 ]
 resolver = "2"
-#default-members = ["wrk17", "protocol", "algebra"]
+#default-members = ["garbler"]
 
 [workspace.dependencies]
 bitvm = { git = "https://github.com/BitVM/BitVM", rev = "79eccd9" }

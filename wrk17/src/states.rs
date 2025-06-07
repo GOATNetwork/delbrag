@@ -1033,7 +1033,7 @@ fn compute_hashes_contrib(
     let r0 = &rhs.label_0;
     let r1 = WireLabel(r0.0 ^ state.delta.0);
 
-    let gi_u32 = gate_index as u64;
+    let gi_u32 = gate_index as u32;
     [
         h0.xor(&garbling_hash::new(l0, r0, gi_u32, 0)),
         h1.xor(&garbling_hash::new(l0, &r1, gi_u32, 1)),
@@ -1665,7 +1665,7 @@ impl InputProcEval {
                 let result = wires[index].other_and_table[row as usize].xor(&garbling_hash::new(
                     &lhs.label,
                     &rhs.label,
-                    index as u64,
+                    index as u32,
                     row,
                 ));
 

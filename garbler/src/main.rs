@@ -5,7 +5,7 @@ use wrk17::{Circuit, Error, Gate, simulate};
 #[command(author, version, about, long_about = None)]
 struct Args {
     #[arg(short, long, default_value_t = 10)]
-    iters: u64,
+    iters: u32,
 
     #[arg(short, long, default_value = "and")]
     circuits: String,
@@ -35,7 +35,7 @@ struct Args {
     wallet_name: String,
 }
 
-fn and(iterations: u64) -> Result<(), Error> {
+fn and(iterations: u32) -> Result<(), Error> {
     let mut gates = vec![Gate::InContrib];
     let output_gates = vec![iterations * 2];
     for i in 0..iterations {
@@ -54,7 +54,7 @@ fn and(iterations: u64) -> Result<(), Error> {
     Ok(())
 }
 
-fn xor(iterations: u64) -> Result<(), Error> {
+fn xor(iterations: u32) -> Result<(), Error> {
     let mut gates = vec![Gate::InContrib];
     let output_gates = vec![iterations * 2];
     for i in 0..iterations {
@@ -138,10 +138,10 @@ fn nand() -> Result<(), Error> {
 fn main() {
     let args = Args::parse();
     match args.circuits.as_str() {
-       "and"  => and(args.iters).unwrap(),
-       "xor" => xor(args.iters).unwrap(),
-       "nand" => nand().unwrap(),
-       "misc" => misc().unwrap(),
+        "and" => and(args.iters).unwrap(),
+        "xor" => xor(args.iters).unwrap(),
+        "nand" => nand().unwrap(),
+        "misc" => misc().unwrap(),
         &_ => todo!(),
     }
 }

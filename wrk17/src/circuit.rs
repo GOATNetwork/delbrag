@@ -3,7 +3,7 @@ use blake3::Hasher;
 use crate::Error;
 
 /// The index of the gate in the circuit, representing its output wire.
-pub type GateIndex = u64;
+pub type GateIndex = u32;
 
 /// A circuit of AND, XOR and NOT gates that can be executed using MPC.
 #[derive(Clone, Debug)]
@@ -90,7 +90,7 @@ impl Circuit {
     pub fn validate(&self) -> Result<(), Error> {
         let mut num_and_gates = 0;
         for (i, g) in self.gates.iter().enumerate() {
-            let i = i as u64;
+            let i = i as u32;
             match g {
                 Gate::InContrib | Gate::InEval => {}
                 &Gate::Xor(x, y) => {
@@ -115,7 +115,7 @@ impl Circuit {
             return Err(Error::InvalidCircuit);
         }
         for &o in self.output_gates.iter() {
-            if o >= self.gates.len() as u64 {
+            if o >= self.gates.len() as u32 {
                 return Err(Error::InvalidCircuit);
             }
         }

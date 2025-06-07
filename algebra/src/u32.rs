@@ -1,7 +1,7 @@
 use super::bitwise::{and, not, or, xor};
-use crate::GatePropogator;
+use crate::GateGenerator;
 
-pub fn not_u32(x: u32, gp: &mut GatePropogator) -> u32 {
+pub fn not_u32(x: u32, gp: &mut GateGenerator) -> u32 {
     let mut result = 0;
     for i in 0..32 {
         let bit = (x >> i) & 1 != 0;
@@ -13,7 +13,7 @@ pub fn not_u32(x: u32, gp: &mut GatePropogator) -> u32 {
 }
 
 // Bitwise ADD using only NAND-based gates
-pub fn add_u32(a: u32, b: u32, gp: &mut GatePropogator) -> u32 {
+pub fn add_u32(a: u32, b: u32, gp: &mut GateGenerator) -> u32 {
     let mut result = 0;
     let mut carry = false;
 
@@ -36,13 +36,13 @@ pub fn add_u32(a: u32, b: u32, gp: &mut GatePropogator) -> u32 {
 }
 
 // Subtraction via two's complement: a - b = a + (~b + 1)
-pub fn sub_u32(a: u32, b: u32, gp: &mut GatePropogator) -> u32 {
+pub fn sub_u32(a: u32, b: u32, gp: &mut GateGenerator) -> u32 {
     let b_neg = add_u32(not_u32(b, gp), 1, gp);
     add_u32(a, b_neg, gp)
 }
 
 // Multiplication using shift-and-add
-pub fn mul_u32(mut a: u32, mut b: u32, gp: &mut GatePropogator) -> u32 {
+pub fn mul_u32(mut a: u32, mut b: u32, gp: &mut GateGenerator) -> u32 {
     let mut result = 0;
 
     for _ in 0..32 {
@@ -57,7 +57,7 @@ pub fn mul_u32(mut a: u32, mut b: u32, gp: &mut GatePropogator) -> u32 {
 }
 
 // Exponentiation using binary exponentiation
-pub fn exp_u32(mut base: u32, mut exp: u32, gp: &mut GatePropogator) -> u32 {
+pub fn exp_u32(mut base: u32, mut exp: u32, gp: &mut GateGenerator) -> u32 {
     let mut result = 1;
     while exp > 0 {
         if exp & 1 != 0 {
@@ -77,7 +77,7 @@ pub mod tests {
         let a = 13;
         let b = 5;
 
-        let mut gp = GatePropogator { gate_index: 0, gates: vec![] };
+        let mut gp = GateGenerator { gate_index: 0, gates: vec![] };
 
         let r_sub = sub_u32(a, b, &mut gp);
         let r_mul = mul_u32(a, b, &mut gp);

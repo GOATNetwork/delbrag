@@ -13,7 +13,7 @@ mod u32;
 pub use bigint::BigInt;
 pub use biguint::BigUint;
 
-pub struct GatePropogator {
-    gate_index: u64,
+pub struct GateGenerator {
+    gate_index: u32,
     gates: Vec<Gate>,
 }
