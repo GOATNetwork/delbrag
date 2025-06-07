@@ -78,14 +78,6 @@ fn build_inputs_script(
     (commit_inputs, timeout_branch)
 }
 
-fn generate_keys() -> (SecretKey, SecretKey) {
-    // Simulate keypairs for Alice and Bob
-    let sk_prover = SecretKey::new(&mut OsRng);
-    let sk_verifier = SecretKey::new(&mut OsRng);
-    (sk_prover, sk_verifier)
-}
-
-// todo: use musig2
 fn build_failgate_script(pk_musig: PublicKey, y0_hash: &[u8; 32]) -> ScriptBuf {
     Builder::new()
         .push_opcode(OP_SHA256)
@@ -125,6 +117,8 @@ pub fn build_output_commit_tx() {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::musig2::simulate_musig2;
+    use crate::utils::inner_from;
     use bitcoin::script::PushBytesBuf;
     use bitcoin_script::script;
     use bitvm::{execute_script, execute_script_buf};
@@ -160,10 +154,11 @@ mod tests {
 
     #[test]
     fn test_commit_inputs_script_builds() {
-        let secp = Secp256k1::new();
-        let (sk_prover, sk_verifier) = generate_keys();
-        let pk_prover = PublicKey::from_secret_key(&secp, &sk_prover);
-        let pk_verifier = PublicKey::from_secret_key(&secp, &sk_verifier);
+        let sk_signers = crate::musig2::generate_keys::<2>(); // prover, verifier
+        let pk_signers: Vec<musig2::secp256k1::PublicKey> =
+            sk_signers.iter().map(|key| key.1).collect::<Vec<_>>();
+        let agg_ctx = musig2::KeyAggContext::new(pk_signers).unwrap();
+        let pk_signer: musig2::secp256k1::PublicKey = agg_ctx.aggregated_pubkey();
 
         // Sample H(Xi₀), H(Xi₁) hashes
         let labels = vec![
@@ -177,21 +172,16 @@ mod tests {
             ),
         ];
 
-        let (commit_inputs, _) = build_inputs_script(&labels, pk_prover, pk_verifier);
+        let (commit_inputs, _) =
+            build_inputs_script(&labels, inner_from(&pk_signer), inner_from(&sk_signers[1].1));
         let locking_script = combine_scripts(&[commit_inputs, script! {OP_TRUE}.compile()]);
 
-        // Simulate a message to sign (normally a sighash)
+        // Simulate a message to multi-sig
         let msg = Message::from_digest_slice(&[0xab; MESSAGE_SIZE]).unwrap();
-        let sig = secp.sign_ecdsa(&msg, &sk_prover);
-        let mut prover_sig_der = sig.serialize_der().to_vec();
-        prover_sig_der.push(0x01); // SIGHASH_ALL
-        let sig_push = PushBytesBuf::try_from(prover_sig_der).expect("Invalid signature for push");
-
-        //let msg = Message::from_digest_slice(&[0xcd; MESSAGE_SIZE]).unwrap();
-        //let sig = secp.sign_ecdsa(&msg, &sk_verifier);
-        //let mut verifier_sig_der = sig.serialize_der().to_vec();
-        //verifier_sig_der.push(0x01); // SIGHASH_ALL
-        //let sig_push2 = PushBytesBuf::try_from(verifier_sig_der).expect("Invalid signature for push");
+        let sig_der = simulate_musig2(&sk_signers, &msg).unwrap();
+        let mut sig_der = sig_der.serialize().to_vec();
+        sig_der.push(0x01); // SIGHASH_ALL
+        let sig_push = PushBytesBuf::try_from(sig_der).expect("Invalid signature for push");
 
         let wtns = Builder::new()
             .push_slice(&sig_push)
@@ -213,23 +203,25 @@ mod tests {
 
     #[test]
     fn test_build_failgate_script() {
-        let secp = Secp256k1::new();
-        let (sk_prover, _) = generate_keys();
-        let pk_prover = PublicKey::from_secret_key(&secp, &sk_prover);
-        //let pk_verifier = PublicKey::from_secret_key(&secp, &sk_verifier);
+        let sk_signers = crate::musig2::generate_keys::<2>(); // prover, verifier
+        let pk_signers: Vec<musig2::secp256k1::PublicKey> =
+            sk_signers.iter().map(|key| key.1).collect::<Vec<_>>();
+        let agg_ctx = musig2::KeyAggContext::new(pk_signers).unwrap();
+        let pk_signer: musig2::secp256k1::PublicKey = agg_ctx.aggregated_pubkey();
 
         // Simulate Y0 preimage and hash
         let y0_preimage = b"some-secret-y0";
         let y0_hash = sha256::Hash::hash(y0_preimage);
 
-        let output_script = build_failgate_script(pk_prover.clone(), &y0_hash.to_byte_array());
+        let output_script = build_failgate_script(inner_from(&pk_signer), &y0_hash.to_byte_array());
+
         let locking_script = combine_scripts(&[output_script, script! {OP_TRUE}.compile()]);
 
         let msg = Message::from_digest_slice(&[0xab; MESSAGE_SIZE]).unwrap();
-        let sig = secp.sign_ecdsa(&msg, &sk_prover);
-        let mut prover_sig_der = sig.serialize_der().to_vec();
-        prover_sig_der.push(0x01); // SIGHASH_ALL
-        let sig_push = PushBytesBuf::try_from(prover_sig_der).expect("Invalid signature for push");
+        let sig_der = simulate_musig2(&sk_signers, &msg).unwrap();
+        let mut sig_der = sig_der.serialize().to_vec();
+        sig_der.push(0x01); // SIGHASH_ALL
+        let sig_push = PushBytesBuf::try_from(sig_der).expect("Invalid signature for push");
 
         let wtns = Builder::new().push_slice(&sig_push).push_slice(y0_preimage).into_script();
 
