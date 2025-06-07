@@ -1,5 +1,40 @@
 //! SMPC engine simulation environment under ideal functionality
+use clap::Parser;
 use wrk17::{Circuit, Error, Gate, simulate};
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[arg(short, long, default_value_t = 10)]
+    iters: u64,
+
+    #[arg(short, long, default_value = "and")]
+    circuits: String,
+
+    /// Fee‑rate in sat/vB (default = 1 sat/vB, plenty for Signet)
+    #[arg(long, default_value_t = 1)]
+    fee_rate: u64,
+
+    /// Network name
+    #[arg(short, long, default_value = "regtest")]
+    network: String,
+
+    /// Network RRC URL
+    #[arg(short, long, default_value = "http://127.0.0.1:18443")]
+    rpc_url: String,
+
+    /// RPC user
+    #[arg(long, default_value = "user")]
+    rpc_user: String,
+
+    /// RPC password
+    #[arg(long, default_value = "PaSsWoRd")]
+    rpc_password: String,
+
+    /// bitcoin wallet name
+    #[arg(long, default_value = "alice")]
+    wallet_name: String,
+}
+
 fn and(iterations: u64) -> Result<(), Error> {
     let mut gates = vec![Gate::InContrib];
     let output_gates = vec![iterations * 2];
@@ -12,7 +47,7 @@ fn and(iterations: u64) -> Result<(), Error> {
     let input_a = vec![true];
     let input_b = vec![true; iterations as usize];
 
-    let result = simulate(&program, &input_a, &input_b).unwrap();
+    let result = simulate(&program, &input_a, &input_b)?;
 
     assert_eq!(result, vec![true]);
 
@@ -31,7 +66,7 @@ fn xor(iterations: u64) -> Result<(), Error> {
     let input_a = vec![true];
     let input_b = vec![true; iterations as usize];
 
-    let result = simulate(&program, &input_a, &input_b).unwrap();
+    let result = simulate(&program, &input_a, &input_b)?;
 
     let expected = vec![iterations % 2 == 0];
 
@@ -101,8 +136,12 @@ fn nand() -> Result<(), Error> {
 }
 
 fn main() {
-    and(10).unwrap();
-    xor(10).unwrap();
-    misc().unwrap();
-    nand().unwrap()
+    let args = Args::parse();
+    match args.circuits.as_str() {
+       "and"  => and(args.iters).unwrap(),
+       "xor" => xor(args.iters).unwrap(),
+       "nand" => nand().unwrap(),
+       "misc" => misc().unwrap(),
+        &_ => todo!(),
+    }
 }

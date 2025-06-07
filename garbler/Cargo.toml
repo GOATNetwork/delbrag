@@ -1,7 +1,8 @@
 [package]
-name = "simu"
+name = "garbler"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
 wrk17 = { workspace = true }
+clap = { workspace = true }
