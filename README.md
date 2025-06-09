@@ -6,7 +6,7 @@
 Garbled Circuits are a cryptographic protocol enabling secure multi-party computation (MPC). They allow two parties (Garbler and Evaluator) to compute a function f(x, y) without revealing private inputs (x from Garbler, y from Evaluator).
 
 ### ​Boolean Circuit Representation​​
-Computations are represented as Boolean circuits (composed of logic gates, such as AND, XOR, NOT, OR). For example, a 2-bit adder computes Out = In0 + In1 using 7 gates (little-endian: In0 = (in00,in01), In1 = (in10,in11) and Out = (out0, out1, out2)) : ![2bit-add](2bit_add.png)
+Computations are represented as Boolean circuits (composed of logic gates, such as AND, XOR, NOT, OR). For example, a 2-bit adder computes Out = In0 + In1 using 7 gates (little-endian: In0 = (in00,in01), In1 = (in10,in11) and Out = (out0, out1, out2)) : ![2bit-add](./docs/2bit_add.png)
 G0: out0 = in00 ^ in10,
 G1: m0 = in00 & in10,  
 G2: m1 = in01 ^ in11,  
