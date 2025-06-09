@@ -1,1 +1,0 @@
-# GOAT Delbrag Introduction
